@@ -1,0 +1,188 @@
+1. jstack stop the world and report consistent state of lock ?
+
+sun.tools.jstack.JStack.java:
+
+      private static void runThreadDump(String pid, String args[]) throws Exception {
+        VirtualMachine vm = null;
+        try {
+            vm = VirtualMachine.attach(pid);
+        } catch (Exception x) {
+            String msg = x.getMessage();
+            if (msg != null) {
+                System.err.println(pid + ": " + msg);
+            } else {
+                x.printStackTrace();
+            }
+            if ((x instanceof AttachNotSupportedException) &&
+                (loadSAClass() != null)) {
+                System.err.println("The -F option can be used when the target " +
+                    "process is not responding");
+            }
+            System.exit(1);
+        }
+
+        // Cast to HotSpotVirtualMachine as this is implementation specific
+        // method.
+        InputStream in = ((HotSpotVirtualMachine)vm).remoteDataDump((Object[])args);
+
+        // read to EOF and just print output
+        byte b[] = new byte[256];
+        int n;
+        do {
+            n = in.read(b);
+            if (n > 0) {
+                String s = new String(b, 0, n, "UTF-8");
+                System.out.print(s);
+            }
+        } while (n > 0);
+        in.close();
+        vm.detach();
+
+j2se/src/share/classes/sun/tools/attach/HotSpotVirtualMachine.java:
+
+    // Remote ctrl-break. The output of the ctrl-break actions can
+    // be read from the input stream.
+    public InputStream remoteDataDump(Object ... args) throws IOException {
+        return executeCommand("threaddump", args);
+    }
+
+
+java/lang/Thread.java:
+
+   /**
+     * Returns a map of stack traces for all live threads.
+     * The map keys are threads and each map value is an array of
+     * <tt>StackTraceElement</tt> that represents the stack dump
+     * of the corresponding <tt>Thread</tt>.
+     * The returned stack traces are in the format specified for
+     * the {@link #getStackTrace getStackTrace} method.
+     *
+     * <p>The threads may be executing while this method is called.
+     * The stack trace of each thread only represents a snapshot and
+     * each stack trace may be obtained at different time.  A zero-length
+     * array will be returned in the map value if the virtual machine has
+     * no stack trace information about a thread.
+     *
+     */
+    public static Map<Thread, StackTraceElement[]> getAllStackTraces() {
+        // check for getStackTrace permission
+        SecurityManager security = System.getSecurityManager();
+        if (security != null) {
+            security.checkPermission(
+                SecurityConstants.GET_STACK_TRACE_PERMISSION);
+            security.checkPermission(
+                SecurityConstants.MODIFY_THREADGROUP_PERMISSION);
+        }
+
+        // Get a snapshot of the list of all threads
+        Thread[] threads = getThreads();
+        StackTraceElement[][] traces = dumpThreads(threads);
+        Map<Thread, StackTraceElement[]> m
+            = new HashMap<Thread, StackTraceElement[]>(threads.length);
+        for (int i = 0; i < threads.length; i++) {
+            StackTraceElement[] stackTrace = traces[i];
+            if (stackTrace != null) {
+                m.put(threads[i], stackTrace);
+            }
+            // else terminated so we don't put it in the map
+        }
+        return m;
+    }
+
+    private native static StackTraceElement[][] dumpThreads(Thread[] threads);
+
+
+openjdk/jdk/src/share/native/java/lang/Thread.c:
+
+static JNINativeMethod methods[] = {
+...
+    {"dumpThreads",      "([" THD ")[[" STE, (void *)&JVM_DumpThreads},
+};
+
+openjdk/hotspot/src/share/vm/prims/jvm.cpp:
+
+// Support for java.lang.Thread.getStackTrace() and getAllStackTraces() methods
+// Return StackTraceElement[][], each element is the stack trace of a thread in
+// the corresponding entry in the given threads array
+JVM_ENTRY(jobjectArray, JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threads))
+  JVMWrapper("JVM_DumpThreads");
+  JvmtiVMObjectAllocEventCollector oam;
+
+  // Check if threads is null
+  if (threads == NULL) {
+    THROW_(vmSymbols::java_lang_NullPointerException(), 0);
+  }
+
+  objArrayOop a = objArrayOop(JNIHandles::resolve_non_null(threads));
+  objArrayHandle ah(THREAD, a);
+  int num_threads = ah->length();
+  // check if threads is non-empty array
+  if (num_threads == 0) {
+    THROW_(vmSymbols::java_lang_IllegalArgumentException(), 0);
+  }
+
+  // check if threads is not an array of objects of Thread class
+  klassOop k = objArrayKlass::cast(ah->klass())->element_klass();
+  if (k != SystemDictionary::Thread_klass()) {
+    THROW_(vmSymbols::java_lang_IllegalArgumentException(), 0);
+  }
+
+  ResourceMark rm(THREAD);
+
+  GrowableArray<instanceHandle>* thread_handle_array = new GrowableArray<instanceHandle>(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    oop thread_obj = ah->obj_at(i);
+    instanceHandle h(THREAD, (instanceOop) thread_obj);
+    thread_handle_array->append(h);
+  }
+  Handle stacktraces = ThreadService::dump_stack_traces(thread_handle_array, num_threads, CHECK_NULL);
+  return (jobjectArray)JNIHandles::make_local(env, stacktraces());
+
+JVM_END
+
+openjdk/hotspot/src/share/vm/services/threadService.cpp:
+
+// Dump stack trace of threads specified in the given threads array.
+// Returns StackTraceElement[][] each element is the stack trace of a thread in
+// the corresponding entry in the given threads array
+Handle ThreadService::dump_stack_traces(GrowableArray<instanceHandle>* threads,
+                                        int num_threads,
+                                        TRAPS) {
+  assert(num_threads > 0, "just checking");
+
+  ThreadDumpResult dump_result;
+  VM_ThreadDump op(&dump_result,
+                   threads,
+                   num_threads,
+                   -1,    /* entire stack */
+                   false, /* with locked monitors */
+                   false  /* with locked synchronizers */);
+  VMThread::execute(&op);
+
+  // Allocate the resulting StackTraceElement[][] object
+
+  ResourceMark rm(THREAD);
+  klassOop k = SystemDictionary::resolve_or_fail(vmSymbolHandles::java_lang_StackTraceElement_array(), true, CHECK_NH);
+  objArrayKlassHandle ik (THREAD, k);
+  objArrayOop r = oopFactory::new_objArray(ik(), num_threads, CHECK_NH);
+  objArrayHandle result_obj(THREAD, r);
+
+  int num_snapshots = dump_result.num_snapshots();
+  assert(num_snapshots == num_threads, "Must have num_threads thread snapshots");
+  int i = 0;
+  for (ThreadSnapshot* ts = dump_result.snapshots(); ts != NULL; i++, ts = ts->next()) {
+    ThreadStackTrace* stacktrace = ts->get_stack_trace();
+    if (stacktrace == NULL) {
+      // No stack trace
+      result_obj->obj_at_put(i, NULL);
+    } else {
+      // Construct an array of java/lang/StackTraceElement object
+      Handle backtrace_h = stacktrace->allocate_fill_stack_trace_element_array(CHECK_NH);
+      result_obj->obj_at_put(i, backtrace_h());
+    }
+  }
+
+  return result_obj;
+}
+
+
