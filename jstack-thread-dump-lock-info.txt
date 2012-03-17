@@ -185,4 +185,3 @@ Handle ThreadService::dump_stack_traces(GrowableArray<instanceHandle>* threads,
   return result_obj;
 }
 
-

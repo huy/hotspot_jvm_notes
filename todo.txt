@@ -1,0 +1,12 @@
+1. jstack can reports inconsistent state of lock
+
+2. java.lang.Thread.State
+
+3. situation when locked object appears on more stacktrace of more threads
+
+4. speculation
+
+    GC ParNew run cause delay
+    Linux kernel scheduler is not fair 
+    Linux kernel Memory Management Unit slowdown 
+    JVM synchronization bug
