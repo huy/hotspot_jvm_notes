@@ -1,0 +1,152 @@
+# Attach to running JVM process
+
+External program like jstack, jmap, jhat can attach to running JVM process using pid of the JVM.
+In linux, the communication is done via local socket, the JVM create and listen on local socket
+with filename .java_pid<pid> in current dir "/proc/<pid>/cwd" or "/tmp"
+
+
+The attaching program
+
+    #./sun/tools/attach/LinuxVirtualMachine.java
+
+    LinuxVirtualMachine(AttachProvider provider, String vmid)
+        throws AttachNotSupportedException, IOException
+    {
+        super(provider, vmid);
+
+        // This provider only understands pids
+        int pid;
+        try {
+            pid = Integer.parseInt(vmid);
+        } catch (NumberFormatException x) {
+            throw new AttachNotSupportedException("Invalid process identifier");
+        }
+
+        // Find the socket file. If not found then we attempt to start the
+        // attach mechanism in the target VM by sending it a QUIT signal.
+        // Then we attempt to find the socket file again.
+        path = findSocketFile(pid);
+        if (path == null) {
+            File f = createAttachFile(pid);
+            try {
+                // On LinuxThreads each thread is a process and we don't have the
+                // pid of the VMThread which has SIGQUIT unblocked. To workaround
+                // this we get the pid of the "manager thread" that is created
+                // by the first call to pthread_create. This is parent of all
+                // threads (except the initial thread).
+                if (isLinuxThreads) {
+                    int mpid;
+                    try {
+                        mpid = getLinuxThreadsManager(pid);
+                    } catch (IOException x) {
+                        throw new AttachNotSupportedException(x.getMessage());
+                    }
+                    assert(mpid >= 1);
+                    sendQuitToChildrenOf(mpid);
+                } else {
+                    sendQuitTo(pid);
+                }
+
+                // give the target VM time to start the attach mechanism
+                int i = 0;
+                long delay = 200;
+                int retries = (int)(attachTimeout() / delay);
+                do {
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException x) { }
+                    path = findSocketFile(pid);
+                    i++;
+                } while (i <= retries && path == null);
+                if (path == null) {
+                    throw new AttachNotSupportedException(
+                        "Unable to open socket file: target process not responding " +
+                        "or HotSpot VM not loaded");
+                }
+            } finally {
+                f.delete();
+            }
+        }
+
+The JVM
+
+        #src/os/linux/vm/attachListener_linux.cpp
+
+        int LinuxAttachListener::init() {
+        ... 
+          int n = snprintf(path, UNIX_PATH_MAX, "%s/.java_pid%d",
+                           os::get_temp_directory(), os::current_process_id());
+        ... 
+          // create the listener socket
+          listener = ::socket(PF_UNIX, SOCK_STREAM, 0);
+        ... 
+          addr.sun_family = AF_UNIX;
+          int res = ::bind(listener, (struct sockaddr*)&addr, sizeof(addr));
+        ...
+          return 0;
+        }
+     
+        #os/linux/vm/attachListener_linux.cpp
+        int AttachListener::pd_init() {
+        ... 
+          int ret_code = LinuxAttachListener::init();
+        ...
+          return ret_code;
+        }
+        
+        #os/linux/vm/attachListener_linux.cpp
+        bool AttachListener::is_init_trigger() {
+        ...
+            if (st.st_uid == geteuid()) {
+              init();
+              return true;
+            }
+        ...
+          return false;
+        }
+
+        #share/vm/services/attachListener.cpp
+
+        static void attach_listener_thread_entry(JavaThread* thread, TRAPS) {
+          os::set_priority(thread, NearMaxPriority);
+        
+          if (AttachListener::pd_init() != 0) {
+            return;
+          }
+          AttachListener::set_initialized();
+
+
+        #share/vm/services/attachListener.cpp
+        void AttachListener::init() {
+        ... 
+          { MutexLocker mu(Threads_lock);
+            JavaThread* listener_thread = new JavaThread(&attach_listener_thread_entry);
+        
+
+        #share/vm/runtime/thread.cpp
+        
+        jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
+        ...
+          // Start Attach Listener if +StartAttachListener or it can't be started lazily
+          if (!DisableAttachMechanism) {
+            if (StartAttachListener || AttachListener::init_at_startup()) {
+              AttachListener::init();
+            }
+          }
+
+
+
+        #share/vm/runtime/os.cpp
+
+        static void signal_thread_entry(JavaThread* thread, TRAPS) {
+          os::set_priority(thread, NearMaxPriority);
+          while (true) {
+            ...
+            switch (sig) {
+              case SIGBREAK: {
+                // Check if the signal is a trigger to start the Attach Listener - in that
+                // case don't print stack traces.
+                if (!DisableAttachMechanism && AttachListener::is_init_trigger()) {
+                  continue;
+                }
+        
