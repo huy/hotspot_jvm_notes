@@ -4,8 +4,10 @@ External program like jstack, jmap, jhat can attach to running JVM process using
 In linux, the communication is done via local socket, the JVM create and listen on local socket
 with filename .java_pid<pid> in current dir "/proc/<pid>/cwd" or "/tmp"
 
+**The attaching program**
 
-The attaching program
+The attaching program looks for socket file and if not found try to kickoff Attach Listener Thread of JVM by
+sending a QUIT signal to the relevant thread that has installed the signal's handlers.
 
     #./sun/tools/attach/LinuxVirtualMachine.java
 
@@ -68,7 +70,97 @@ The attaching program
             }
         }
 
-The JVM
+
+
+        #sun/tools/attach/LinuxVirtualMachine.java
+        
+            InputStream execute(String cmd, Object ... args) throws AgentLoadException, IOException {
+                assert args.length <= 3;                // includes null
+        
+                // did we detach?
+                String p;
+                synchronized (this) {
+                    if (this.path == null) {
+                        throw new IOException("Detached from target VM");
+                    }
+                    p = this.path;
+                }
+        
+                // create UNIX socket
+                int s = socket();
+        
+                // connect to target VM
+                try {
+                    connect(s, p);
+                } catch (IOException x) {
+                    close(s);
+                    throw x;
+                }
+        
+                IOException ioe = null;
+        
+                // connected - write request
+                // <ver> <cmd> <args...>
+                try {
+                    writeString(s, PROTOCOL_VERSION);
+                    writeString(s, cmd);
+        
+                    for (int i=0; i<3; i++) {
+                        if (i < args.length && args[i] != null) {
+                            writeString(s, (String)args[i]);
+                        } else {
+                            writeString(s, "");
+                        }
+                    }
+                } catch (IOException x) {
+                    ioe = x;
+                }
+        
+        
+                // Create an input stream to read reply
+                SocketInputStream sis = new SocketInputStream(s);
+        
+                // Read the command completion status
+                int completionStatus;
+                try {
+                    completionStatus = readInt(sis);
+                } catch (IOException x) {
+                    sis.close();
+                    if (ioe != null) {
+                        throw ioe;
+                    } else {
+                        throw x;
+                    }
+                }
+        
+                if (completionStatus != 0) {
+                    sis.close();
+        
+                    // In the event of a protocol mismatch then the target VM
+                    // returns a known error so that we can throw a reasonable
+                    // error.
+                    if (completionStatus == ATTACH_ERROR_BADVERSION) {
+                        throw new IOException("Protocol mismatch with target VM");
+                    }
+        
+                    // Special-case the "load" command so that the right exception is
+                    // thrown.
+                    if (cmd.equals("load")) {
+                        throw new AgentLoadException("Failed to load agent library");
+                    } else {
+                        throw new IOException("Command failed in target VM");
+                    }
+                }
+        
+                // Return the input stream so that the command output can be read
+                return sis;
+            }
+
+
+**The JVM**
+
+There is Attach Listener Thread of JVM which is either starts when JVM starts or is kicked off by signal QUIT/BREAK.
+The Attach Listner Thead is reponsible for create the UNIX server socket and listen for incomming operations from the socket.
 
         #src/os/linux/vm/attachListener_linux.cpp
 
@@ -134,8 +226,6 @@ The JVM
             }
           }
 
-
-
         #share/vm/runtime/os.cpp
 
         static void signal_thread_entry(JavaThread* thread, TRAPS) {
@@ -150,3 +240,56 @@ The JVM
                   continue;
                 }
         
+**Read and excute an operation sent by external utility**
+
+There is loop in attach listener thread of JVM, that reads an operation from socket executes it and
+write the result to the socket. 
+
+        #share/vm/services/attachListener.cpp
+        
+        static void attach_listener_thread_entry(JavaThread* thread, TRAPS) {
+          os::set_priority(thread, NearMaxPriority);
+        
+          if (AttachListener::pd_init() != 0) {
+            return;
+          }
+          AttachListener::set_initialized();
+        
+          for (;;) {
+            AttachOperation* op = AttachListener::dequeue();
+        
+            // handle special detachall operation
+            if (strcmp(op->name(), AttachOperation::detachall_operation_name()) == 0) {
+              AttachListener::detachall();
+            } else {
+              // find the function to dispatch too
+              AttachOperationFunctionInfo* info = NULL;
+              for (int i=0; funcs[i].name != NULL; i++) {
+                const char* name = funcs[i].name;
+                assert(strlen(name) <= AttachOperation::name_length_max, "operation <= name_length_max");
+                if (strcmp(op->name(), name) == 0) {
+                  info = &(funcs[i]);
+                  break;
+                }
+              }
+        
+              // check for platform dependent attach operation
+              if (info == NULL) {
+                info = AttachListener::pd_find_operation(op->name());
+              }
+        
+              if (info != NULL) {
+                // dispatch to the function that implements this operation
+                res = (info->func)(op, &st);
+              } else {
+                st.print("Operation %s not recognized!", op->name());
+                res = JNI_ERR;
+              }
+            }
+        
+            // operation complete - send result and output to client
+            op->complete(res, &st);
+         }
+       }
+        
+
