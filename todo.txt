@@ -1,12 +1,12 @@
-1. jstack can reports inconsistent state of lock
+1. how jstack works 
 
-2. java.lang.Thread.State
+2. understand java.lang.Thread.State
 
-3. situation when locked object appears on more stacktrace of more threads
+3. understand JVM internal threads
 
-4. speculation
+4. situation when locked object appears on more stacktrace of more threads
 
-    GC ParNew run cause delay
-    Linux kernel scheduler is not fair 
-    Linux kernel Memory Management Unit slowdown 
-    JVM synchronization bug
+4.1  GC ParNew run cause delay
+4.2  Linux kernel scheduler is not fair 
+4.3  Linux kernel Memory Management Unit slowdown 
+4.4  JVM synchronization bug

@@ -51,7 +51,8 @@ threads.
 
 * "Attach Listener" is internal thread that listens on UNIX socket, receives and executes command sent by 
 utilities like jstack, jmap, jhat. This thread is kicked off the first time when signal QUIT is received
-* "VM Thread" is reponsible to execute VM operations e.g. PrintThreads, ThreadStop, GenCollectFull. 
+* "VM Thread" is reponsible to execute VM operations e.g. PrintThreads, ThreadStop, GenCollectFull. These VM operations may required
+execution at safepoint
 * "C2 CompilerThread0" and "C2 CompilerThread1" are responsible for compile bytecode to machine code.
 * "Signal Dispatcher" is responsible for handling signals sent to the JVM
 * "Finalizer" is responsible for executing object's finalizer method
