@@ -1,4 +1,4 @@
-# jstack stop the world and report consistent state of lock ?
+# How jstack works
 
 **jstack program main class**
 
