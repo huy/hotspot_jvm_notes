@@ -195,6 +195,8 @@ Table of functions that implements each operation
 
 Thread Dump funcion
 
+the thread_dump function create intented VM operations and execute it in the context of VM thread 
+
         #share/vm/services/attachListener.cpp
         static jint thread_dump(AttachOperation* op, outputStream* out) {
           bool print_concurrent_locks = false;
@@ -215,5 +217,63 @@ Thread Dump funcion
           VMThread::execute(&op3);
         
           return JNI_OK;
+        }
+
+There are bundle of VM_operation to process different administrative aspects of JVM such as thread, gc, lock, 
+they are defined in 
+
+        #share/vm/runtime/vm_operations.hpp
+
+        #define VM_OPS_DO(template)                       \
+          template(Dummy)                                 \
+          template(ThreadStop)                            \
+          template(ThreadDump)                            \
+          template(PrintThreads)                          \
+          template(FindDeadlocks)                         \
+          template(ForceSafepoint)                        \
+          template(ForceAsyncSafepoint)                   \
+          template(Deoptimize)                            \
+          template(DeoptimizeFrame)                       \
+          template(DeoptimizeAll)                         \
+          template(ZombieAll)                             \
+          template(HandleFullCodeCache)                   \
+          template(Verify)                                \
+
+        class VM_PrintThreads: public VM_Operation {
+         private:
+          outputStream* _out;
+          bool _print_concurrent_locks;
+         public:
+          VM_PrintThreads() { _out = tty; _print_concurrent_locks = PrintConcurrentLocks; }
+          VM_PrintThreads(outputStream* out, bool print_concurrent_locks)  { _out = out; _print_concurrent_locks = print_concurrent_locks; }
+          VMOp_Type type() const  {  return VMOp_PrintThreads; }
+          void doit();
+          bool doit_prologue();
+          void doit_epilogue();
+        };
+        
+        
+The operation is add to queue of the VM Thread, a thread of JVM dedicated for executio of administrative operation
+
+        #share/vm/runtime/vmThread.cpp
+
+        void VMThread::execute(VM_Operation* op) {
+          Thread* t = Thread::current();
+        
+          if (!t->is_VM_thread()) {
+        ...
+            // New request from Java thread, evaluate prologue
+            if (!op->doit_prologue()) {
+              return;   // op was cancelled
+            }
+        ...
+              VMOperationQueue_lock->lock_without_safepoint_check();
+              bool ok = _vm_queue->add(op);
+        ... 
+            if (execute_epilog) {
+              op->doit_epilogue();
+            }
+          } else {
+        ...
         }
         
