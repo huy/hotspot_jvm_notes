@@ -6,3 +6,4 @@
 * http://jnb.ociweb.com/jnb/archive/jnbJune2000.html: soft, weak, phantom references1
 * http://java.sun.com/docs/books/jls/second_edition/html/jTOC.doc.html: book from creator of java language
 * http://icedtea.classpath.org/wiki/DeveloperQuickStart: icedtea 
+* http://openjdk.java.net/groups/hotspot/docs/RuntimeOverview.html

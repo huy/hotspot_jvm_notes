@@ -60,4 +60,7 @@ execution at safepoint
 * "Low Memory Detector" detect if the JVM has low memory
 * "VM Periodic Task Thread" executes periodic activities that are submitted by java.util.Timer,java.util.TimerTask 
 
+**References**
+
+* http://openjdk.java.net/groups/hotspot/docs/RuntimeOverview.html
 
