@@ -1,0 +1,16 @@
+# Concurrency
+
+**Volatile**
+
+To make one thread see modification of other thread, then the field must be
+declared as volatile. Read and write to volatile field will generate instruction
+to ensure cache coherence.
+
+**CAS**
+
+CAS is suppoted in JAVA by using relevant CAS instruction of CPU.
+
+java.util.concurrent.atomic provides classes that support CAS - Compare and Swap
+atomic operation. These classes are of primitive types e.g. long, int, reference. 
+
+The implementation is backed by volatile field and unsafe for direct memory access.
