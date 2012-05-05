@@ -14,3 +14,7 @@ java.util.concurrent.atomic provides classes that support CAS - Compare and Swap
 atomic operation. These classes are of primitive types e.g. long, int, reference. 
 
 The implementation is backed by volatile field and unsafe for direct memory access.
+
+**References**
+
+* http://www.infoq.com/articles/memory_barriers_jvm_concurrency
