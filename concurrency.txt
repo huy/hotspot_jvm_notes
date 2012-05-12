@@ -13,7 +13,17 @@ CAS is suppoted in JAVA by using relevant CAS instruction of CPU.
 java.util.concurrent.atomic provides classes that support CAS - Compare and Swap
 atomic operation. These classes are of primitive types e.g. long, int, reference. 
 
-The implementation is backed by volatile field and unsafe for direct memory access.
+The implementation is backed by volatile field and uses Java Unsafe for direct memory access.
+
+**Lock free algorithm**
+
+An lock free algorithm use CAS to modify shared data structure while preseving its invariant. 
+Each success CAS operation must be a transition of shared data structure from one valid state to other.
+
+Test the correctness in concurrent environment is hard because it is not possible to mimic the behavior 
+of multi threads running concurrenty. The most useful method to prove correctness is to list all possible
+valid states of the shared data structure and prove that employed CAS operations only change from one
+valid state to other.
 
 **References**
 
