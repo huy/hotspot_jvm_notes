@@ -35,8 +35,8 @@ create a simple java and corresponding byte code
 
 The fast allocation use TLAB `src/share/vm/interpreter/bytecodeInterpreter.cpp`
 
-   BytecodeInterpreter::run(interpreterState istate) {
-   ...
+    BytecodeInterpreter::run(interpreterState istate) {
+    ...
    
          CASE(_new): {
         u2 index = Bytes::get_Java_u2(pc+1);
