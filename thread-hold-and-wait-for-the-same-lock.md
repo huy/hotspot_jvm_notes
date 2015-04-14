@@ -1,7 +1,12 @@
-3. situation when thread dump report two threads hold the same lock
 
-  "JBoss System Threads(1)-3603" daemon prio=10 tid=0x5dd23800 nid=0x2f93 in Object.wait() [0x5a27b000]
-   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+## The situation when thread dump report two threads hold the same lock
+
+It happens in whe `Object.wait` is called inside synchronized block in wait/notify synchronization pattern
+
+**Stack trace**
+
+     "JBoss System Threads(1)-3603" daemon prio=10 tid=0x5dd23800 nid=0x2f93 in Object.wait() [0x5a27b000]
+      java.lang.Thread.State: TIMED_WAITING (on object monitor)
         at java.lang.Object.wait(Native Method)
         - waiting on <0x74fd3ca8> (a java.lang.Object)
         at EDU.oswego.cs.dl.util.concurrent.BoundedLinkedQueue.poll(BoundedLinkedQueue.java:253)
@@ -10,6 +15,8 @@
         at org.jboss.util.threadpool.MinPooledExecutor.getTask(MinPooledExecutor.java:106)
         at EDU.oswego.cs.dl.util.concurrent.PooledExecutor$Worker.run(PooledExecutor.java:760)
         at java.lang.Thread.run(Thread.java:636)
+
+**Source code**
 
        237  public Object poll(long msecs) throws InterruptedException {
        238    if (Thread.interrupted()) throw new InterruptedException();
