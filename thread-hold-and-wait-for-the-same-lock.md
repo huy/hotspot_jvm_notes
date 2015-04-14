@@ -1,5 +1,5 @@
 
-## The situation when thread dump report two threads hold the same lock
+## Thread dump report thread holds and waith for the same lock
 
 It happens in whe `Object.wait` is called inside synchronized block in wait/notify synchronization pattern
 
