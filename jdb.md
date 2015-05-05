@@ -10,3 +10,14 @@ This is simple command line debugger. Example of usage
 
     $jdb -attach localhost:9009
     
+**Add break point**
+
+    >stop in java.lang.String.length
+    
+**Step in**
+
+    >step 
+    
+**Show local variables**    
+
+    >locals
