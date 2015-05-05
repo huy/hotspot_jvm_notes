@@ -6,7 +6,7 @@ This is simple command line debugger. Example of usage
 
     $java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=localhost:9009 MyClass
     
-***Attache debugger to java process*
+**Attache debugger to java process**
 
     $jdb -attach localhost:9009
     
