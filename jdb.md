@@ -18,6 +18,19 @@ This is simple command line debugger. Example of usage
 
     >step 
     
+**Step one call level up **
+
+    >step up
+
 **Show local variables**    
 
     >locals
+
+**Dump object's fields**    
+
+    >dump this
+
+**Continue until next break point**    
+
+    >continue
+
