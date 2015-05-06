@@ -18,7 +18,7 @@ This is simple command line debugger. Example of usage
 
     >step 
     
-**Step one call level up **
+**Step one call level up**
 
     >step up
 
