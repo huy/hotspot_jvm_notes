@@ -1,15 +1,2 @@
-1. how jstack works 
-
-2. understand java.lang.Thread.State
-
-3. understand JVM internal threads
-
-4. review situation when locked object appears on more stacktrace of more threads
-
-4.1  GC ParNew run cause delay
-4.2  Linux kernel scheduler is not fair 
-4.3  Linux kernel Memory Management Unit slowdown 
-4.4  JVM synchronization bug
-
-5. weak, soft, phantom reference
+1. weak, soft, phantom reference
 
