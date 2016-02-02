@@ -29,6 +29,7 @@ barrier instruction before reading the variable on the other core (to drain the 
         break;
     }
        
+Beside the flushing effect, memory barrier also mean that CPU is not allow to reorder instruction freely across a barrier.
 
 ### How a memory barrier is used Java ?
 
