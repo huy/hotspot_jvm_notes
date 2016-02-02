@@ -38,4 +38,7 @@ inserts `read_barrier` before the instruction the load the variable.
 
 Other is common case is `synchronize` a block of code. In that case java insert `load_barrier` immediately before entering the code block and `write_barrier` immediately after exiting it.
 
+### References
 
+* http://mechanical-sympathy.blogspot.com.au/2011/07/memory-barriersfences.html
+* http://www.infoq.com/articles/memory_barriers_jvm_concurrency
