@@ -32,7 +32,9 @@ barrier instruction before reading the variable on the other core (to drain the 
 
 ### How a memory barrier is used Java ?
 
-The simplest usecase is variable declared as `volatile`. Whenever we modify a volatile variable then java inserts a `write_barrier` instruction after the modification instruction, conversely when we read a volatile variable java it 
+The simplest usecase is a variable declared as `volatile`. Whenever we modify a volatile variable then java inserts a `write_barrier` instruction after the modification instruction, conversely when we read a volatile variable java it 
 inserts `read_barrier` before the instruction the load the variable.
+
+Other is common case is `synchronize` a block of code. In that case java insert `load_barrier` immediately before entering the code block and `write_barrier` immediately after exiting it.
 
 
