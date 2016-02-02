@@ -11,14 +11,14 @@ need to execute write barrier instruction after the modification (to flush the c
 barrier instruction before reading the variable on the other core. 
 
     Core 1
-    
+    ------
     a := 9
     write_barrier
 
     Core 2
-    
+    ------
     while (true) {
-       read_barrier
+       load_barrier
        if (a == 9)
         break;
     }
