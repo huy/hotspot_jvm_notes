@@ -14,7 +14,7 @@ Memory barrier is CPU instructions that flush the read/write buffer cache. On In
 The write barrier running on a core flushes write cache of the core. The read barrier conversely flushes the core read cache. 
 Suppose that we modify an variable in one core and want that update to be seen by an other core then on the first core we 
 need to execute write barrier instruction after the modification (to flush the core write buffer) and also issue the read 
-barrier instruction before reading the variable on the other core. 
+barrier instruction before reading the variable on the other core (to drain the other core read buffer). 
 
     Core 1
     ------
