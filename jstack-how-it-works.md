@@ -253,7 +253,7 @@ they are defined in
         };
         
         
-The operation is add to queue of the VM Thread, a thread of JVM dedicated for executio of administrative operation
+The operation is add to queue of the VM Thread, a thread of JVM dedicated for execution of administrative operation
 
         #share/vm/runtime/vmThread.cpp
 
