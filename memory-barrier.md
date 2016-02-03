@@ -1,6 +1,6 @@
 ## Memory barrier
 
-### what is it ?
+**what is it ?**
 
 Modern multi cores CPU has different level of cache as such write to memory location by one core is not immediately visible 
 to an other. We can imagine that each core has both read buffer and write buffer to read from and write to. These buffers 
@@ -31,7 +31,7 @@ barrier instruction before reading the variable on the other core (to drain the 
        
 Memory barrier also mean that CPU is not allowed to reorder instruction freely across a barrier. More precisely an read memory instruction appears after a `read_barrier` can't be moved before the barrier and conversely write memory instruction appears before a `write_barrier` can't be moved after the barrier. Otherwise the reorder will defy the purpose of memory barrier.
 
-### How a memory barrier is used Java ?
+**How a memory barrier is used Java ?**
 
 If a variable is declared as `volatile`, whenever we modify a volatile variable then java inserts a `write_barrier` instruction after the modification instruction, conversely when we read a volatile variable java it inserts `read_barrier` before the instruction that reads the variable.
 
@@ -39,7 +39,7 @@ When a variable is declared as `final`, java insert a `write_barrier` imediately
 
 An other common case is `synchronize` a block of code. In that case java insert `load_barrier` immediately before entering the code block and `write_barrier` immediately after exiting it.
 
-### References
+**References**
 
 * http://mechanical-sympathy.blogspot.com.au/2011/07/memory-barriersfences.html
 * http://www.infoq.com/articles/memory_barriers_jvm_concurrency
