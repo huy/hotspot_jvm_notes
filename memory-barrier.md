@@ -29,14 +29,15 @@ barrier instruction before reading the variable on the other core (to drain the 
         break;
     }
        
-Beside the flushing effect, memory barrier also mean that CPU is not allow to reorder instruction freely across a barrier.
+Memory barrier also mean that CPU is not allowed to reorder instruction freely across a barrier. More precisely an read memory instruction appears after a `read_barrier` can't be moved before the barrier and conversely write memory instruction appears before a `write_barrier` can't be moved after the barrier. Otherwise the reorder will defy the purpose of memory barrier.
 
 ### How a memory barrier is used Java ?
 
-The simplest usecase is a variable declared as `volatile`. Whenever we modify a volatile variable then java inserts a `write_barrier` instruction after the modification instruction, conversely when we read a volatile variable java it 
-inserts `read_barrier` before the instruction the load the variable.
+If a variable is declared as `volatile`, whenever we modify a volatile variable then java inserts a `write_barrier` instruction after the modification instruction, conversely when we read a volatile variable java it inserts `read_barrier` before the instruction that reads the variable.
 
-Other is common case is `synchronize` a block of code. In that case java insert `load_barrier` immediately before entering the code block and `write_barrier` immediately after exiting it.
+When a variable is declared as `final`, java insert a `write_barrier` imediately after inilization of the variable by doing that any instructions reading the variable get correct uptodate value.
+
+An other common case is `synchronize` a block of code. In that case java insert `load_barrier` immediately before entering the code block and `write_barrier` immediately after exiting it.
 
 ### References
 
