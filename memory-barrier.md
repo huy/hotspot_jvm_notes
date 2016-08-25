@@ -3,7 +3,7 @@
 **what is it ?**
 
 Modern multi cores CPU has different level of cache as such write to memory location by one core is not immediately visible 
-to an other. We can imagine that each core has both read buffer and write buffer to read from and write to (note that processor documents may refer to read and write cache as load and store cache). These buffers need to be flushed in order to make the change the an variable by one to be seen by an other.
+to an other. We can imagine that each core has both read buffer and write buffer to read from and write to (note that processor documents may refer to read and write cache as load and store cache). These buffers need to be flushed/drained in order to make the change the an variable by one to be seen by an other.
 
 Memory barrier is CPU instructions that flush the read/write buffer cache. On Intel CPU (note that other CPU may work quite differently), there are two basic kinds of barriers 
 
